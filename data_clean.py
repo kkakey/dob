@@ -1,7 +1,8 @@
 import sys
 import os
 from zipfile import ZipFile
-from urllib.request import urlopen
+# from urllib.request import urlopen
+from urllib2 import urlopen
 import pandas as pd
 import geopandas as gpd
 import numpy as np
