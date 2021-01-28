@@ -10,7 +10,7 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '10 15 * * *'
+    - cron: '16 15 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
 #   workflow_dispatch:
@@ -26,12 +26,9 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      - uses: goanpeca/setup-miniconda@v1
+      - uses: conda-incubator/setup-miniconda@v2
         with:
-          activate-environment: maps
-          environment-file: environment.yml
-          python-version: 3.8
-          auto-activate-base: false
+         activate-environment: maps
       - name: Conda info
         shell: bash -l {0}  # activate the conda environment
         run: |
