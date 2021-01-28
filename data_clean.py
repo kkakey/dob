@@ -42,6 +42,7 @@ df = df[df['doc__']=="01"]
 
 df.to_csv("raw-data/NB-2021.csv", index=False)
 
+today = datetime.today()
 s = today.strftime("%Y/%m/%d")
 date = datetime.strptime(s, "%Y/%m/%d")
 modified_date = date - timedelta(days=365*3)
