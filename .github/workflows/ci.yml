@@ -10,7 +10,7 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '27 15 * * *'
+    - cron: '0 12 * * *'
 
   # Allows you to run this workflow manually from the Actions tab
 #   workflow_dispatch:
@@ -37,5 +37,5 @@ jobs:
       # Runs a single command using the runners shell
       - name: Run model script
         run: |
-          python script.py # code-NB-3-ka.ipynb
+          python data_clean.py # code-NB-3-ka.ipynb
 
