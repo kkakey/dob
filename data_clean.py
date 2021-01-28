@@ -1,8 +1,6 @@
 import sys
 import os
 from zipfile import ZipFile
-# from urllib.request import urlopen
-from urllib2 import urlopen
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -12,6 +10,7 @@ import re
 from tqdm.notebook import tqdm
 import warnings
 from datetime import datetime, timedelta
+from urllib.request import urlopen
 warnings.filterwarnings('ignore')
 
 ### Load/Retrieve all data
