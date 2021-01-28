@@ -33,7 +33,7 @@ jobs:
       - uses: s-weigand/setup-conda@v1
       - run: conda install pandas
       - run: conda install geopandas
-      - run: conda install tqdm
+#       - run: conda install tqdm
       - run: conda install urllib3
       - run: pip install sodapy
       - name: Conda info
