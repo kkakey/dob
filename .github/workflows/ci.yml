@@ -44,9 +44,16 @@ jobs:
           conda info
           conda list
         # Runs a single command using the runners shell
+      - name: Set value
+        run: |
+          echo "API_KEY=${{ env.API_KEY }}" >> $GITHUB_ENV
+      - name: Check
+        run: |
+          echo "${{ env.API_KEY }}" # check that it is not none
       - name: Run model script
         run: |
           python data_clean.py # code-NB-3-ka.ipynb
         env:
           API_KEY: ${{ env.API_KEY }}
+
 
