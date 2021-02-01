@@ -25,8 +25,8 @@ data_set='ic3t-wcy2'
 data_url='data.cityofnewyork.us'
 # NYC Data API key - input key as 'API_KEY'
 # from config import app_token
-load_dotenv()
-API_KEY = os.getenv('API_KEY')
+# load_dotenv()
+API_KEY = os.environ.get('API_KEY')
 # API_KEY = config('API_KEY')
 app_token = API_KEY
 
