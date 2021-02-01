@@ -7,7 +7,7 @@ import numpy as np
 import requests
 from sodapy import Socrata
 import re
-# from tqdm.notebook import tqdm
+from tqdm.notebook import tqdm
 import warnings
 from datetime import datetime, timedelta
 from urllib.request import urlopen
@@ -21,10 +21,9 @@ warnings.filterwarnings('ignore')
 ## https://data.cityofnewyork.us/Housing-Development/DOB-Job-Application-Filings/ic3t-wcy2/data
 data_set='ic3t-wcy2'
 data_url='data.cityofnewyork.us'
-# NYC Data API key - input key as 'app_token'
+# NYC Data API key - input key as 'API_KEY'
 #from config import app_token
-#app_token=app_token
-app_token = '0h1v8vN3cR81KItbjfjYgRrAH'
+app_token=API_KEY
 
 client = Socrata(data_url,app_token)
 # columns to retrieve from the dataset
@@ -297,7 +296,7 @@ def loop_func(blacklist, date_threshold):
     # initialize some columns in shapefile
     tax_shp["Same_Owner"] = 0 # 0 - not same owner; 1 - same owner
     tax_shp["Owner"] = 0 # NB, Same_Owner, Block
-    for NB_BBL in all_NBs:
+    for NB_BBL in tqdm(all_NBs, total=len(all_NBs), position=0, leave=True):
         try:
             count += 1
             if count%50==0:
