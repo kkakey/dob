@@ -43,13 +43,10 @@ jobs:
         run: |
           conda info
           conda list
-      - name: Key
-        env:
-         API_KEY: ${{ secrets.API_KEY }}
-        run: |
-          echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
         # Runs a single command using the runners shell
       - name: Run model script
         run: |
           python data_clean.py # code-NB-3-ka.ipynb
+        env:
+         API_KEY: ${{ secrets.API_KEY }}
 
