@@ -36,6 +36,7 @@ jobs:
 #       - run: conda install tqdm
       - run: conda install urllib3
       - run: pip install sodapy
+      - run: pip install python-decouple
       - name: Conda info
         shell: bash -l {0}  # activate the conda environment
         run: |
