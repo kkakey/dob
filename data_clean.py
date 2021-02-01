@@ -1,6 +1,6 @@
 import sys
 import os
-from decouple import config
+# from decouple import config
 from zipfile import ZipFile
 import pandas as pd
 import geopandas as gpd
