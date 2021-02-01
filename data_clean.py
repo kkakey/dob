@@ -22,7 +22,7 @@ warnings.filterwarnings('ignore')
 data_set='ic3t-wcy2'
 data_url='data.cityofnewyork.us'
 # NYC Data API key - input key as 'API_KEY'
-from config import app_token
+# from config import app_token
 app_token=API_KEY
 
 client = Socrata(data_url,app_token)
