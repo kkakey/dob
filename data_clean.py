@@ -27,6 +27,7 @@ data_url='data.cityofnewyork.us'
 # from config import app_token
 # API_KEY = os.environ.get('API_KEY')
 API_KEY = config('API_KEY')
+print(API_KEY)
 app_token = API_KEY
 
 client = Socrata(data_url,app_token)
