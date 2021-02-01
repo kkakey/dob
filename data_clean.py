@@ -1,6 +1,7 @@
 import sys
 import os
 # from decouple import config
+from dotenv import load_dotenv
 from zipfile import ZipFile
 import pandas as pd
 import geopandas as gpd
@@ -24,8 +25,10 @@ data_set='ic3t-wcy2'
 data_url='data.cityofnewyork.us'
 # NYC Data API key - input key as 'API_KEY'
 # from config import app_token
+load_dotenv()
 API_KEY = os.getenv('API_KEY')
-app_token=API_KEY
+# API_KEY = config('API_KEY')
+app_token = API_KEY
 
 client = Socrata(data_url,app_token)
 # columns to retrieve from the dataset
