@@ -1,0 +1,218 @@
+---
+title: "NYC New Building Filings"
+author: ""
+output:
+  flexdashboard::flex_dashboard:
+    # favicon: img/ios7-location-outline.png
+    # source_code: embed
+    theme: paper
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# prep workspace
+library(dplyr)  # tidy data manipulation
+# devtools::install_github("dmurdoch/leaflet@crosstalk4")
+library(leaflet)  # interative mapping
+library(DT)  # interactive tables
+library(crosstalk)  # inter-widget interactivity
+library(sf)
+# library(rgdal)
+nb_data <- read.csv("./model_output/Filter02_14.csv")
+shp <- read_sf("./model_output/Filter02_14.shp")
+shp <-st_transform(shp, crs=4269)
+shp <- shp %>%
+  left_join(., nb_data %>% 
+              mutate(BBL = as.character(BBL)) %>%
+              select(BBL, BIN, pre__filing_date), by="BBL")
+# pre_filing dates for all buildings for filtering 
+date_BBLs <- shp[shp$pre__filing_date!="-" & !is.na(shp$pre__filing_date),] %>%
+  data.frame() %>%
+  select(!geometry)
+shp <- shp   %>%
+  select(!pre__filing_date) %>%
+  left_join(., as.data.frame(date_BBLs[c("BORO", "BLOCK", "pre__filing_date")]), 
+            by=c("BORO", "BLOCK")) %>%
+  distinct(BBL,.keep_all=T)
+shp$pre_filing_date <- as.Date(shp$pre__filing_date)
+
+# get center of blocks
+block_shp <- shp %>%
+  group_by(BORO, BLOCK) %>%
+  summarize() 
+blocks_center<- st_centroid(block_shp)
+
+# shp_sp <- shp %>% as('Spatial')
+# st_write(shp, "./output-data/shp_sp.shp")
+# shp_sp <- readOGR("./output-data/", "shp_sp", verbose = FALSE)
+
+nb_data <- nb_data %>%
+  select(!c(bin__, doc_id, RPP_Owner_Not_Same))
+
+sd <- SharedData$new(nb_data, group = "map")
+sd_map <- SharedData$new(shp, group = "map")
+sd_block <- SharedData$new(blocks_center, group = "map")
+# sch <- readRDS("/Users/kristenakey/Downloads/gias_sample.RDS")
+# sd <- SharedData$new(sch)
+```
+
+
+<!-- Main {data-icon="ion-stats-bars"} -->
+<!-- =====================================   -->
+
+
+Column {data-width=400}
+-------------------------------------
+
+```{r}
+update_date<- Sys.Date()
+knitr::kable(paste0("Last updated: ", update_date), col.names = NULL)
+```
+
+### Overview
+
+Text here to overview project and purpose of this tool.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Mi eget mauris pharetra et ultrices. Blandit libero volutpat sed cras. Amet purus gravida quis blandit turpis cursus in hac. Nam aliquam sem et tortor consequat id porta. Aenean pharetra magna ac placerat vestibulum lectus mauris ultrices. 
+
+Ligula ullamcorper malesuada proin libero nunc. Eu turpis egestas pretium aenean. Cum sociis natoque penatibus et magnis. Ut placerat orci nulla pellentesque dignissim enim sit. Hac habitasse platea dictumst vestibulum rhoncus est pellentesque. Sed viverra tellus in hac. Nibh sit amet commodo nulla facilisi nullam vehicula ipsum a. Sit amet aliquam id diam maecenas ultricies mi eget mauris.
+
+
+### Datatable
+    
+```{r datatable}
+sd %>%
+  DT::datatable(
+    filter = "top",  # allows filtering on each column
+    extensions = c(
+      "Buttons",  # add download buttons, etc
+      "Scroller"  # for scrolling down the rows rather than pagination
+    ),
+    rownames = FALSE,  # remove rownames
+    style = "bootstrap",
+    class = "compact",
+    width = "100%",
+    options = list(
+      dom = "Blrtip",  # specify content (search box, etc)
+      deferRender = TRUE,
+      scrollY = 300,
+      scroller = TRUE,
+      # pageLength = 8,
+      ordering = F,
+      columnDefs = list(
+        list(
+          visible = FALSE,
+          targets = c(4:8)
+        )
+      ),
+      buttons = list(
+        I("colvis"),  # turn columns on and off
+        "csv",  # download as .csv
+        "excel"  # download as .xlsx
+      )
+    ),
+        colnames = c(
+      "BBL" = "BBL",
+      "Job Filing" = "Job_Filing",
+      "BBL Description" = "BBL_Description",
+      "Address" = "Address",
+      "NB Owner" = "NB_Owner",
+      "Same Owner" = "Same_Owner",
+      "BIN" = "BIN",
+      "Pre-filing Date" = "pre__filing_date"
+    )
+  )
+```
+
+
+
+Column {data-width=600}
+-------------------------------------
+   
+    
+### New York City New Buildings Map
+```{r}
+shp <- shp %>%
+  mutate(Same_Owner_word = ifelse(Same_Owner==0, "Not the same", "Same owner")) 
+shp[shp$BBL_descri=="NB",]$Same_Owner_word <- "NB"
+
+### this works with the regular shapefile!
+factpal <- colorFactor(topo.colors(5), shp$Joint_NBs)
+factpal2 <- colorFactor(heat.colors(5), shp$BBL_descri)
+#something weird happening here -- fix
+factpal3 <- colorFactor(terrain.colors(5), shp$Same_Owner_word)
+
+label <- sprintf(
+    "BBL: <strong>%s</strong><br/>
+     NB Status: <strong>%s</strong><br/>",
+    shp$BBL, shp$Joint_NBs
+  ) %>% lapply(htmltools::HTML)
+
+label2 <- sprintf(
+    "BBL: <strong>%s</strong><br/>
+     Description: <strong>%s</strong><br/>",
+    shp$BBL, shp$BBL_descri
+  ) %>% lapply(htmltools::HTML)
+
+
+label3 <- sprintf(
+    "BBL: <strong>%s</strong><br/>
+     Same Owner Status: <strong>%s</strong><br/>",
+    shp$BBL, shp$Same_Owner_word
+  ) %>% lapply(htmltools::HTML)
+
+```
+
+
+```{r}
+leaflet(data=sd_map) %>%
+  leaflet::addProviderTiles(providers$OpenStreetMap) %>%
+  addCircleMarkers(data=sd_block,
+                   clusterOptions = markerClusterOptions(maxClusterRadius = 75),
+                   stroke = F, fillOpacity = 0, group="Buildings Locator") %>%
+  addPolygons(group = "Joint NBs",
+              stroke = T, smoothFactor = 1, fillOpacity = .8,
+    fillColor = ~factpal(Joint_NBs),color = "#100c08",weight=.8,dashArray = "",
+           highlight = highlightOptions(
+                              weight = 4,
+                              color = "black",
+                              dashArray = "",
+                              fillOpacity = 6,
+                              bringToFront = T),
+    label = label) %>%
+    addPolygons(group = "NB Adjacencies",
+              stroke = T, smoothFactor = 1, fillOpacity = .8,
+    fillColor = ~factpal2(BBL_descri),color = "#100c08",weight=.8,dashArray = "",
+           highlight = highlightOptions(
+                              weight = 4,
+                              color = "black",
+                              dashArray = "",
+                              fillOpacity = 6,
+                              bringToFront = T),
+    label = label2) %>%
+      addPolygons(group = "Same Owner",
+              stroke = T, smoothFactor = 1, fillOpacity = .8,
+    fillColor = ~factpal3(BBL_descri),color = "#100c08",weight=.8,dashArray = "",
+           highlight = highlightOptions(
+                              weight = 4,
+                              color = "black",
+                              dashArray = "",
+                              fillOpacity = 6,
+                              bringToFront = T),
+    label = label3) %>%
+    addLayersControl(
+        baseGroups = c("Joint NBs", "NB Adjacencies", "Same Owner"),
+        position = "topleft",
+        overlayGroups = c("Buildings Locator"),
+        options = layersControlOptions(collapsed = F)
+      ) %>%
+      htmlwidgets::onRender("
+        function() {
+            $('.leaflet-control-layers-base').prepend('<label style=\"text-align:center\">Map Variable</label>');
+        }
+    ") 
+
+```
+
+

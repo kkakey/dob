@@ -70,7 +70,7 @@ rpl.to_csv("raw-data/real_prop_legals.csv", index=False)
 data_set='636b-3b5g'
 data_url='data.cityofnewyork.us'
 client = Socrata(data_url,app_token)
-client.timeout = 300
+client.timeout = 350
 results = client.get(data_set, where= where_var, select = 'good_through_date, document_id, name, party_type',limit=43000000)
 rpp = pd.json_normalize(results)
 
@@ -769,7 +769,14 @@ tax_shp = gpd.read_file(shapefile_saved_path + "NB_lots_blocks.shp")
 the_df, odd_NB_BBLs = loop_func(blacklist, date_threshold)
 # odd_NB_BBLs = list of NBs not in shapefile
 
+# readd NB bins and date
+the_df = pd.merge(the_df, df[df.BBL.isin(the_df.BBL.tolist())][["BBL", "bin__", "pre__filing_date"]], on="BBL", how="left")
+the_df['bin__'] = [int(i) if not math.isnan(i) else "-" for i in the_df['bin__']]
+the_df['pre__filing_date'] = the_df['pre__filing_date'].fillna("-")
+the_df = the_df.rename(columns={"bin__":"BIN"})
+
 ## save as "FilterYear_#ofDocsBlacklisted"
+
 the_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+ str(len(blacklist)-9)+".csv", index=False)
 
 # join output with Real Property Master's for information on document types
