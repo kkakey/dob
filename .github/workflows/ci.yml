@@ -36,7 +36,7 @@ jobs:
 #       - run: conda install tqdm
       - run: conda install urllib3
       - run: pip install sodapy
-      - run: pip install math
+      - run: pip install python-math
       - run: pip install python-decouple
 #       - run: pip install python-dotenv
       - name: Conda info
