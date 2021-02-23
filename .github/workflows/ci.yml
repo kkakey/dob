@@ -40,22 +40,6 @@ jobs:
       - run: pip install python-decouple
 #       - run: pip install python-dotenv
 
-      # R set-up
-      - name: Set up R ${{ matrix.r-version }}
-        uses: r-lib/actions/setup-R@v1
-        with:
-          r-version: ${{ matrix.r-version }}
-
-      - name: Setting up pandoc for Rmd docs
-        uses: r-lib/actions/setup-pandoc@v1
-        
-      - name: Install dependencies
-        run: |
-          install.packages(c("dplyr", "leaflet", "DT",
-          "crosstalk", "sf", "rmarkdown"))
-        shell: Rscript {0}
-
-
       - name: Conda info
         shell: bash -l {0}  # activate the conda environment
         run: |
@@ -74,6 +58,23 @@ jobs:
           python data_clean.py # code-NB-3-ka.ipynb
         env:
           API_KEY: ${{ secrets.API_KEY }}
+        
+        
+            # R set-up
+      - name: Set up R ${{ matrix.r-version }}
+        uses: r-lib/actions/setup-R@v1
+        with:
+          r-version: ${{ matrix.r-version }}
+
+      - name: Setting up pandoc for Rmd docs
+        uses: r-lib/actions/setup-pandoc@v1
+        
+      - name: Install dependencies
+        run: |
+          install.packages(c("dplyr", "leaflet", "DT",
+          "crosstalk", "sf", "rmarkdown"))
+        shell: Rscript {0}
+        
         
       - name: Knit html
         run: |
