@@ -67,6 +67,7 @@ Column {data-width=400}
 
 ```{r}
 update_date<- Sys.Date()
+update_date<-update_date-1
 knitr::kable(paste0("Last updated: ", update_date), col.names = NULL)
 ```
 
