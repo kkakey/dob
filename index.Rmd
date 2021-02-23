@@ -47,8 +47,8 @@ blocks_center<- st_centroid(block_shp)
 # st_write(shp, "./output-data/shp_sp.shp")
 # shp_sp <- readOGR("./output-data/", "shp_sp", verbose = FALSE)
 
-nb_data <- nb_data %>%
-  select(!c(bin__, doc_id, RPP_Owner_Not_Same))
+# nb_data <- nb_data %>%
+#  select(!c(bin__, doc_id, RPP_Owner_Not_Same))
 
 sd <- SharedData$new(nb_data, group = "map")
 sd_map <- SharedData$new(shp, group = "map")
