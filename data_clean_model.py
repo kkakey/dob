@@ -303,7 +303,7 @@ def loop_func(blacklist, date_threshold):
     tax_shp["Same_Owner"] = 0 # 0 - not same owner; 1 - same owner
     tax_shp["Owner"] = 0 # NB, Same_Owner, Block
     tax_shp['Inferred_Lots'] = "-"
-    for NB_BBL in tqdm(all_NBs, total=len(all_NBs), position=0, leave=True):
+    for NB_BBL in all_NBs:
         try:
             count += 1
             if count%50==0:
