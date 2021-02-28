@@ -72,7 +72,8 @@ jobs:
       - name: Install dependencies
         run: |
           install.packages(c("dplyr", "leaflet", "DT",
-          "crosstalk", "sf", "rmarkdown", "flexdashboard", "leaflet.extras"))
+          "crosstalk", "sf", "rmarkdown", "flexdashboard", "leaflet.extras",
+          "htmltools"))
         shell: Rscript {0}
         
         
