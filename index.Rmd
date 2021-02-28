@@ -17,6 +17,7 @@ library(DT)  # interactive tables
 library(crosstalk)  # inter-widget interactivity
 library(sf)
 library(leaflet.extras)
+library(htmltools)
 # library(rgdal)
 nb_data <- read.csv("./model_output/Filter02_14.csv")
 shp <- read_sf("./model_output/Filter02_14.shp")
@@ -202,7 +203,7 @@ label_new <- sprintf(
 
 
 ```{r}
-leaflet(data=sd_map) %>%
+plot_map <- leaflet(data=sd_map) %>%
   leaflet::addProviderTiles(providers$OpenStreetMap) %>%
   addCircleMarkers(data=sd_block, 
                    clusterOptions = markerClusterOptions(maxClusterRadius = 75),
@@ -243,6 +244,16 @@ leaflet(data=sd_map) %>%
            position = 'topleft'
   )
 
+browsable(
+  tagList(list(
+    tags$head(
+      tags$style(
+        ".leaflet-tooltip{ width: 150px; white-space: normal; }"
+      )
+    ),
+    plot_map
+  ))
+)
 ```
 
 
