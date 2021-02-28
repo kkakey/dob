@@ -829,7 +829,7 @@ the_df['pre__filing_date'] = the_df['pre__filing_date'].fillna("-")
 the_df = the_df.rename(columns={"bin__":"BIN"})
 
 the_df.loc[the_df.BBL_Description=="Job Filing", "Map Status"] = "NB on map"
-the_df.loc[the_df.BBL.isin(odd_NB_BBLs_df.BBL.tolist()), "Map Status"] = "NB not on map"
+the_df.loc[the_df.BBL.isin(odd_NB_BBLs.BBL.tolist()), "Map Status"] = "NB not on map"
 
 ## save as "FilterYear_#ofDocsBlacklisted"
 
