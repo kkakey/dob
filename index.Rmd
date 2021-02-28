@@ -18,6 +18,7 @@ library(leaflet)  # interative mapping
 library(DT)  # interactive tables
 library(crosstalk)  # inter-widget interactivity
 library(sf)
+library(leaflet.extras)
 # library(rgdal)
 nb_data <- read.csv("./model_output/Filter02_14.csv")
 shp <- read_sf("./model_output/Filter02_14.shp")
@@ -43,26 +44,55 @@ block_shp <- shp %>%
   summarize() 
 blocks_center<- st_centroid(block_shp)
 
-# shp_sp <- shp %>% as('Spatial')
-# st_write(shp, "./output-data/shp_sp.shp")
-# shp_sp <- readOGR("./output-data/", "shp_sp", verbose = FALSE)
-
-# nb_data <- nb_data %>%
-#  select(!c(bin__, doc_id, RPP_Owner_Not_Same))
+blocks_center <- blocks_center %>%
+  mutate(Borough = case_when(
+           BORO==1 ~ "Manhattan",
+           BORO==2 ~ "Bronx",
+           BORO==3 ~ "Brooklyn",
+           BORO==4 ~ "Queens",
+           BORO==5 ~ "Staten Island"
+         )) 
 
 nb_data <- nb_data %>%
   select(!c(RPP_Owner_Not_Same, doc_id))
 
+nb_data <- nb_data %>%
+  mutate(boro_code = substr(BBL, 1, 1),
+         Borough = case_when(
+           boro_code==1 ~ "Manhattan",
+           boro_code==2 ~ "Bronx",
+           boro_code==3 ~ "Brooklyn",
+           boro_code==4 ~ "Queens",
+           boro_code==5 ~ "Staten Island"
+         ),
+         `Block` = substr(BBL, 2, 6)) %>%
+  select(!boro_code)
+  
+nb_data <- nb_data[c("BBL", "Borough", "Block","Job_Filing", "BBL_Description",
+                     "Inferred_lots","Address", "NB_Owner","Same_Owner","Joint_NBs", 
+                     "BIN", "pre__filing_date", "Map.Status")]
+nb_data$pre__filing_date <- as.Date(nb_data$pre__filing_date)
+nb_data$Block <- as.double(nb_data$Block)
+
+shp <- shp %>%
+  mutate(Same_Owner_word = ifelse(Same_Owner==0, "Not the same", "Same owner")) 
+shp[shp$BBL_descri=="NB",]$Same_Owner_word <- "NB"
+
+shp$Inferred_1[shp$Inferred_1 == "BLOCK" & !is.na(shp$Inferred_1)] <- "Block"
+shp$Inferred_1[shp$Inferred_1 == "ADJACENT" & !is.na(shp$Inferred_1)] <- "Adjacent"
+shp$Inferred_1[shp$Inferred_1 == "Inferred_lot" & !is.na(shp$Inferred_1)] <- "Inferred Lot"
+
 sd <- SharedData$new(nb_data, group = "map")
 sd_map <- SharedData$new(shp, group = "map")
 sd_block <- SharedData$new(blocks_center, group = "map")
+# sd_lots <- SharedData$new(shp_center, group = "map")
 # sch <- readRDS("/Users/kristenakey/Downloads/gias_sample.RDS")
 # sd <- SharedData$new(sch)
 ```
 
 
-<!-- Main {data-icon="ion-stats-bars"} -->
-<!-- =====================================   -->
+Main {data-icon="ion-stats-bars"}
+=====================================
 
 
 Column {data-width=400}
@@ -70,7 +100,7 @@ Column {data-width=400}
 
 ```{r}
 update_date<- Sys.Date()
-update_date<-update_date-1
+update_date<-update_date
 knitr::kable(paste0("Last updated: ", update_date), col.names = NULL)
 ```
 
@@ -107,7 +137,7 @@ sd %>%
       columnDefs = list(
         list(
           visible = FALSE,
-          targets = c(4:8)
+          targets = c(7:12)
         )
       ),
       buttons = list(
@@ -118,14 +148,18 @@ sd %>%
     ),
         colnames = c(
       "BBL" = "BBL",
+      "Borough" = "Borough",
+      "Block" = "Block",
       "Job Filing" = "Job_Filing",
       "BBL Description" = "BBL_Description",
-      "Joint NBs" = "Joint_NBs",
+      "Inferred Lots" = "Inferred_lots",
       "Address" = "Address",
       "NB Owner" = "NB_Owner",
-      "Same Owner" = "Same_Owner",
+      "Adjacent Same Owner" = "Same_Owner",
+      "Multi-Lot Filing" = "Joint_NBs",
       "BIN" = "BIN",
-      "Pre-filing Date" = "pre__filing_date"
+      "Pre-filing Date" = "pre__filing_date",
+      "Map Status" = "Map.Status"
     )
   )
 ```
@@ -138,76 +172,41 @@ Column {data-width=600}
     
 ### New York City New Buildings Map
 ```{r}
-shp <- shp %>%
-  mutate(Same_Owner_word = ifelse(Same_Owner==0, "Not the same", "Same owner")) 
-shp[shp$BBL_descri=="NB",]$Same_Owner_word <- "NB"
-
-### this works with the regular shapefile!
-factpal <- colorFactor(topo.colors(5), shp$Joint_NBs)
-factpal2 <- colorFactor(heat.colors(5), shp$BBL_descri)
-#something weird happening here -- fix
-factpal3 <- colorFactor(terrain.colors(5), shp$Same_Owner_word)
+factpal <- colorFactor(palette="YlOrBr", shp$Inferred_1)
 
 label <- sprintf(
     "BBL: <strong>%s</strong><br/>
-     NB Status: <strong>%s</strong><br/>",
-    shp$BBL, shp$Joint_NBs
+     Inferred Lot Status: <strong>%s</strong><br/>",
+    shp$BBL, shp$Inferred_1
   ) %>% lapply(htmltools::HTML)
 
-label2 <- sprintf(
-    "BBL: <strong>%s</strong><br/>
-     Description: <strong>%s</strong><br/>",
-    shp$BBL, shp$BBL_descri
+label_new <- sprintf(
+    "%s %s",
+    as.character(blocks_center$Borough), as.character(blocks_center$BLOCK)
   ) %>% lapply(htmltools::HTML)
-
-
-label3 <- sprintf(
-    "BBL: <strong>%s</strong><br/>
-     Same Owner Status: <strong>%s</strong><br/>",
-    shp$BBL, shp$Same_Owner_word
-  ) %>% lapply(htmltools::HTML)
-
 ```
+
 
 
 ```{r}
 leaflet(data=sd_map) %>%
   leaflet::addProviderTiles(providers$OpenStreetMap) %>%
-  addCircleMarkers(data=sd_block,
+  addCircleMarkers(data=sd_block, 
                    clusterOptions = markerClusterOptions(maxClusterRadius = 75),
                    stroke = F, fillOpacity = 0, group="Buildings Locator") %>%
-  addPolygons(group = "Joint NBs",
+  addPolygons(group = "Inferred Lots",
               stroke = T, smoothFactor = 1, fillOpacity = .8,
-    fillColor = ~factpal(Joint_NBs),color = "#100c08",weight=.8,dashArray = "",
-           highlight = highlightOptions(
+              fillColor = ~factpal(Inferred_1),color = "#100c08",
+              weight=.8,dashArray = "",
+              highlight = highlightOptions(
                               weight = 4,
                               color = "black",
                               dashArray = "",
                               fillOpacity = 6,
                               bringToFront = T),
-    label = label) %>%
-    addPolygons(group = "NB Adjacencies",
-              stroke = T, smoothFactor = 1, fillOpacity = .8,
-    fillColor = ~factpal2(BBL_descri),color = "#100c08",weight=.8,dashArray = "",
-           highlight = highlightOptions(
-                              weight = 4,
-                              color = "black",
-                              dashArray = "",
-                              fillOpacity = 6,
-                              bringToFront = T),
-    label = label2) %>%
-      addPolygons(group = "Same Owner",
-              stroke = T, smoothFactor = 1, fillOpacity = .8,
-    fillColor = ~factpal3(BBL_descri),color = "#100c08",weight=.8,dashArray = "",
-           highlight = highlightOptions(
-                              weight = 4,
-                              color = "black",
-                              dashArray = "",
-                              fillOpacity = 6,
-                              bringToFront = T),
-    label = label3) %>%
-    addLayersControl(
-        baseGroups = c("Joint NBs", "NB Adjacencies", "Same Owner"),
+                              label = label) %>%
+  addLayersControl(
+        baseGroups = "Inferred Lots",
         position = "topleft",
         overlayGroups = c("Buildings Locator"),
         options = layersControlOptions(collapsed = F)
@@ -216,8 +215,29 @@ leaflet(data=sd_map) %>%
         function() {
             $('.leaflet-control-layers-base').prepend('<label style=\"text-align:center\">Map Variable</label>');
         }
-    ") 
+    ")  %>%
+      addMarkers(data=blocks_center,
+               group = 'marker', label = label_new,
+                   icon = makeIcon( 
+      iconUrl = "http://leafletjs.com/examples/custom-icons/leaf-green.png",
+      iconWidth = 1, iconHeight = 1
+    )) %>%
+  addSearchFeatures(
+    targetGroups = 'marker'
+    ) %>%
+  addControl(html="<p style='font-size:12px'>Search for:<br/><u>Borough</u> <u>Block #</u><br/>
+             i.e: Manhattan 1722</p>",
+           position = 'topleft'
+  )
 
 ```
 
 
+More Info {data-orientation=rows data-icon="fa-info-circle"}
+=====================================
+
+### More Information
+
+#### How to use
+
+#### Overview of the data used

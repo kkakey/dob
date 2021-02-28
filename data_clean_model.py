@@ -302,7 +302,8 @@ def loop_func(blacklist, date_threshold):
     # initialize some columns in shapefile
     tax_shp["Same_Owner"] = 0 # 0 - not same owner; 1 - same owner
     tax_shp["Owner"] = 0 # NB, Same_Owner, Block
-    for NB_BBL in all_NBs:
+    tax_shp['Inferred_Lots'] = "-"
+    for NB_BBL in tqdm(all_NBs, total=len(all_NBs), position=0, leave=True):
         try:
             count += 1
             if count%50==0:
@@ -645,6 +646,48 @@ def loop_func(blacklist, date_threshold):
             tax_shp.loc[tax_shp['BBL'].isin(not_adj.BBL.tolist()), 'Owner'] = ["Block" if x not in already_own else x for x in tax_shp.loc[tax_shp['BBL'].isin(not_adj.BBL.tolist()), 'Owner']]
 
 
+            ### Inferred Lots
+            map_block2 = tax_shp[tax_shp.BBL.isin(map_block.BBL.tolist())]
+            map_block2.loc[(map_block2.Same_Owner==1) & (map_block2.BBL_description=="ADJACENT"), 'Inferred_Lots'] = 'Inferred Lot'
+            map_block2.loc[(map_block2.Joint_NBs=="NB") & (map_block2.BBL_description=="ADJACENT"), 'Inferred_Lots'] = 'Inferred Lot'
+            map_block2.loc[map_block2.BBL_description=="NB",  'Inferred_Lots'] = "NB"
+
+            inferred_lots_list = map_block2[map_block2.Inferred_Lots.isin(['Inferred Lot','NB'])].BBL.tolist()
+            # correct the descriptions of adjacent/block buildings if there are joint NBs
+            if len(inferred_lots_list) > 1:
+                map_block2["ADJACENT_UPDATE2"] = None
+                for index, building in map_block2.iterrows():
+                    # get 'not disjoint' buildings
+                    neighbors = map_block2[~map_block2.geometry.disjoint(building.geometry)].BBL.tolist()
+                    # remove own name from the list
+                    neighbors = [ bbl for bbl in neighbors if building.BBL != bbl ]
+                    # add names of neighbors as ADJACENT value
+                    map_block2.at[index, "ADJACENT_UPDATE2"] = neighbors
+
+                adj_update2 = map_block2[map_block2.BBL.isin(inferred_lots_list)].ADJACENT_UPDATE2.to_list()
+                near_BBL_update2 = [item for sublist in adj_update2 for item in sublist if item not in inferred_lots_list]
+
+                # update list of BBLs only on the block (not adjacent to the NB)
+                not_adj_update2 = map_block2[~map_block2.BBL.isin(near_BBL_update2)]
+                not_adj_update2 = not_adj_update2[~not_adj_update2.BBL.isin(inferred_lots_list)]
+
+                # indicate in shapefile building description: NB, Adjacent, or Block
+                tax_shp.loc[tax_shp['BBL'] == NB_BBL, 'Inferred_lot_desc'] = "NB"
+                # if the building is already been marked as NB, do not change it to Inferred Lot
+                tax_shp.loc[tax_shp['BBL'].isin(inferred_lots_list), 'Inferred_lot_desc'] = ["Inferred_lot" if x != "NB" else x for x in tax_shp.loc[tax_shp['BBL'].isin(inferred_lots_list), 'Inferred_lot_desc']]
+                # if the building as already been marked as NB, do not change it to Adjacent or Block
+                tax_shp.loc[tax_shp['BBL'].isin(near_BBL_update2), 'Inferred_lot_desc'] = ["ADJACENT" if x != "NB" and x != "Inferred_lot" else x for x in tax_shp.loc[tax_shp['BBL'].isin(near_BBL_update2), 'Inferred_lot_desc']]
+                already_desc = ["NB", "ADJACENT", "Inferred_lot"]
+                tax_shp.loc[tax_shp['BBL'].isin(not_adj_update2.BBL.tolist()), 'Inferred_lot_desc'] = ["BLOCK" if x not in already_desc else x for x in tax_shp.loc[tax_shp['BBL'].isin(not_adj_update2.BBL.tolist()), 'Inferred_lot_desc']]
+
+                # otherwise make same as BBL description
+            if len(inferred_lots_list) ==1:
+                tax_shp.loc[tax_shp['BBL'] == NB_BBL, 'Inferred_lot_desc'] = "NB"
+                # if the building as already been marked as NB, do not change it to Adjacent or Block
+                tax_shp.loc[tax_shp['BBL'].isin(near_BBL), 'Inferred_lot_desc'] = ["ADJACENT" if x != "NB" else x for x in tax_shp.loc[tax_shp['BBL'].isin(near_BBL), 'Inferred_lot_desc']]
+                already_desc = ["NB", "ADJACENT"]
+                tax_shp.loc[tax_shp['BBL'].isin(not_adj.BBL.tolist()), 'Inferred_lot_desc'] = ["BLOCK" if x not in already_desc else x for x in tax_shp.loc[tax_shp['BBL'].isin(not_adj.BBL.tolist()), 'Inferred_lot_desc']]
+
             #### CSV output ####
 
             # if NB BBL is not in shapfile, need to create a custom row that includes NB data for output
@@ -671,14 +714,26 @@ def loop_func(blacklist, date_threshold):
 
             # Create joint_NBs description column
             map_block['JOINT_NBs'] = "-"
+            already_desc = ["NB", "ADJACENT"]
             if len(joint_NBs) > 1:
                 map_block.loc[map_block.BBL.isin(joint_NBs), 'JOINT_NBs'] = "NB"
-                map_block.loc[map_block.BBL.isin(near_BBL_update), 'JOINT_NBs'] = "Adjacent"
-                map_block.loc[map_block.BBL.isin(not_adj_update.BBL.tolist()), 'JOINT_NBs'] = "Block"
+                map_block.loc[map_block.BBL.isin(near_BBL_update), 'JOINT_NBs'] = ["ADJACENT" if x != "NB" else x for x in map_block.loc[map_block['BBL'].isin(near_BBL_update), 'JOINT_NBs']]
+                map_block.loc[map_block.BBL.isin(not_adj_update.BBL.tolist()), 'JOINT_NBs'] = ["BLOCK" if x not in already_desc else x for x in map_block.loc[map_block['BBL'].isin(not_adj_update.BBL.tolist()), 'JOINT_NBs']]
             if len(joint_NBs)==1:
                 map_block.loc[map_block.BBL==NB_BBL, 'JOINT_NBs'] = "NB"
-                map_block.loc[map_block.BBL.isin(near_BBL), 'JOINT_NBs'] = "Adjacent"
-                map_block.loc[map_block.BBL.isin(not_adj.BBL.tolist()), 'JOINT_NBs'] = "Block"
+                map_block.loc[map_block.BBL.isin(near_BBL), 'JOINT_NBs'] = ["ADJACENT" if x != "NB" else x for x in map_block.loc[map_block['BBL'].isin(near_BBL), 'JOINT_NBs']]
+                map_block.loc[map_block.BBL.isin(not_adj.BBL.tolist()), 'JOINT_NBs'] = ["BLOCK" if x not in already_desc else x for x in map_block.loc[map_block['BBL'].isin(not_adj.BBL.tolist()), 'JOINT_NBs']]
+
+            # Create inferred lots description column
+            if len(inferred_lots_list) > 1:
+                map_block.loc[map_block.BBL.isin(inferred_lots_list), 'INFERRED_LOTs'] = "NB"
+                map_block.loc[map_block.BBL.isin([i for i in inferred_lots_list if i!=NB_BBL]), 'INFERRED_LOTs'] = "Inferred Lot"
+                map_block.loc[map_block.BBL.isin(near_BBL_update2), 'INFERRED_LOTs'] = "Adjacent"
+                map_block.loc[map_block.BBL.isin(not_adj_update2.BBL.tolist()), 'INFERRED_LOTs'] = "Block"
+            if len(inferred_lots_list)==1:
+                map_block.loc[map_block.BBL==NB_BBL, 'INFERRED_LOTs'] = "NB"
+                map_block.loc[map_block.BBL.isin(near_BBL), 'INFERRED_LOTs'] = "Adjacent"
+                map_block.loc[map_block.BBL.isin(not_adj.BBL.tolist()), 'INFERRED_LOTs'] = "Block"
 
             # NB address column
             NB_ADDRESS = list(df[df['BBL']== NB_BBL].NB_ADDRESS.drop_duplicates())
@@ -730,8 +785,8 @@ def loop_func(blacklist, date_threshold):
             map_block.NB_ADDRESS = ["-" if x == "" else x for x in list(map_block.NB_ADDRESS)]
 
             # Bind all columns together to create csv
-            csvdf = pd.DataFrame(list(zip(BBL_col, job_filing, building_desc, list(map_block.JOINT_NBs), list(map_block.NB_ADDRESS), list(map_block.NB_OWNER), list(map_block.SAME_OWN), list(map_block.RPP_Owner_Not_Same), list(map_block.doc_id))),
-                               columns =['BBL', 'Job_Filing', 'BBL_Description', 'Joint_NBs','Address', 'NB_Owner', "Same_Owner", "RPP_Owner_Not_Same", "doc_id"])
+            csvdf = pd.DataFrame(list(zip(BBL_col, job_filing, building_desc, list(map_block.INFERRED_LOTs),list(map_block.JOINT_NBs), list(map_block.NB_ADDRESS), list(map_block.NB_OWNER), list(map_block.SAME_OWN), list(map_block.RPP_Owner_Not_Same), list(map_block.doc_id))),
+                               columns =['BBL', 'Job_Filing', 'BBL_Description', 'Inferred_lots','Joint_NBs','Address', 'NB_Owner', "Same_Owner", "RPP_Owner_Not_Same", "doc_id"])
 
             the_df = the_df.append(csvdf, ignore_index=True)
 
@@ -740,9 +795,6 @@ def loop_func(blacklist, date_threshold):
             odd_NB_BBLs.append(NB_BBL)
 
     return(the_df, odd_NB_BBLs)
-
-
-
 
 #### Define list of NBs to analyze in the model
 
@@ -775,6 +827,9 @@ the_df = pd.merge(the_df, df[df.BBL.isin(the_df.BBL.tolist())][["BBL", "bin__", 
 the_df['bin__'] = [int(i) if not math.isnan(i) else "-" for i in the_df['bin__']]
 the_df['pre__filing_date'] = the_df['pre__filing_date'].fillna("-")
 the_df = the_df.rename(columns={"bin__":"BIN"})
+
+the_df.loc[the_df.BBL_Description=="Job Filing", "Map Status"] = "NB on map"
+the_df.loc[the_df.BBL.isin(odd_NB_BBLs_df.BBL.tolist()), "Map Status"] = "NB not on map"
 
 ## save as "FilterYear_#ofDocsBlacklisted"
 
