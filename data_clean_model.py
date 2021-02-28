@@ -652,8 +652,12 @@ def loop_func(blacklist, date_threshold):
             map_block2.loc[(map_block2.Joint_NBs=="NB") & (map_block2.BBL_description=="ADJACENT"), 'Inferred_Lots'] = 'Inferred Lot'
             map_block2.loc[map_block2.BBL_description=="NB",  'Inferred_Lots'] = "NB"
 
-            inferred_lots_list = map_block2[map_block2.Inferred_Lots.isin(['Inferred Lot','NB'])].BBL.tolist()
-            # correct the descriptions of adjacent/block buildings if there are joint NBs
+                # prevents instances with two NBs of different owners on the block to be considered inferred lot
+            if set(map_block2.Inferred_Lots.unique())!=(set(['-', 'NB'])):
+                inferred_lots_list = map_block2[map_block2.Inferred_Lots.isin(['Inferred Lot','NB'])].BBL.tolist()
+            else:
+                inferred_lots_list = [NB_BBL]
+            # correct the descriptions of adjacent/block buildings if there are inferred lots
             if len(inferred_lots_list) > 1:
                 map_block2["ADJACENT_UPDATE2"] = None
                 for index, building in map_block2.iterrows():
@@ -671,7 +675,7 @@ def loop_func(blacklist, date_threshold):
                 not_adj_update2 = map_block2[~map_block2.BBL.isin(near_BBL_update2)]
                 not_adj_update2 = not_adj_update2[~not_adj_update2.BBL.isin(inferred_lots_list)]
 
-                # indicate in shapefile building description: NB, Adjacent, or Block
+                # indicate in shapefile inferred lot building description: NB, Inferred lot, Adjacent, or Block
                 tax_shp.loc[tax_shp['BBL'] == NB_BBL, 'Inferred_lot_desc'] = "NB"
                 # if the building is already been marked as NB, do not change it to Inferred Lot
                 tax_shp.loc[tax_shp['BBL'].isin(inferred_lots_list), 'Inferred_lot_desc'] = ["Inferred_lot" if x != "NB" else x for x in tax_shp.loc[tax_shp['BBL'].isin(inferred_lots_list), 'Inferred_lot_desc']]

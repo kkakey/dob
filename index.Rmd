@@ -82,12 +82,17 @@ shp$Inferred_1[shp$Inferred_1 == "BLOCK" & !is.na(shp$Inferred_1)] <- "Block"
 shp$Inferred_1[shp$Inferred_1 == "ADJACENT" & !is.na(shp$Inferred_1)] <- "Adjacent"
 shp$Inferred_1[shp$Inferred_1 == "Inferred_lot" & !is.na(shp$Inferred_1)] <- "Inferred Lot"
 
+# sort datatable
+nb_data <- nb_data %>%
+  mutate(boro_code = substr(BBL, 1, 1),
+         group_code = paste(boro_code, Block)) %>%
+  group_by(group_code) %>%
+  arrange(group_code) %>%
+  ungroup() %>% select(!c(boro_code, group_code))
+
 sd <- SharedData$new(nb_data, group = "map")
 sd_map <- SharedData$new(shp, group = "map")
 sd_block <- SharedData$new(blocks_center, group = "map")
-# sd_lots <- SharedData$new(shp_center, group = "map")
-# sch <- readRDS("/Users/kristenakey/Downloads/gias_sample.RDS")
-# sd <- SharedData$new(sch)
 ```
 
 
