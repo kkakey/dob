@@ -3,8 +3,6 @@ title: "NYC New Building Filings"
 author: ""
 output:
   flexdashboard::flex_dashboard:
-    # favicon: img/ios7-location-outline.png
-    # source_code: embed
     theme: paper
   html_document:
     df_print: paged
@@ -82,6 +80,12 @@ shp$Inferred_1[shp$Inferred_1 == "BLOCK" & !is.na(shp$Inferred_1)] <- "Block"
 shp$Inferred_1[shp$Inferred_1 == "ADJACENT" & !is.na(shp$Inferred_1)] <- "Adjacent"
 shp$Inferred_1[shp$Inferred_1 == "Inferred_lot" & !is.na(shp$Inferred_1)] <- "Inferred Lot"
 
+shp <- shp %>%
+  left_join(., nb_data %>%
+  mutate(BBL = as.character(BBL)) %>%
+  filter(NB_Owner!="-") %>% select(BBL, NB_Owner), on="BBL")
+shp$NB_Owner[is.na(shp$NB_Owner)] <- "-"
+
 # sort datatable
 nb_data <- nb_data %>%
   mutate(boro_code = substr(BBL, 1, 1),
@@ -90,10 +94,12 @@ nb_data <- nb_data %>%
   arrange(group_code) %>%
   ungroup() %>% select(!c(boro_code, group_code))
 
+
 sd <- SharedData$new(nb_data, group = "map")
 sd_map <- SharedData$new(shp, group = "map")
 sd_block <- SharedData$new(blocks_center, group = "map")
 ```
+
 
 
 Main {data-icon="ion-stats-bars"}
@@ -181,14 +187,16 @@ factpal <- colorFactor(palette="YlOrBr", shp$Inferred_1)
 
 label <- sprintf(
     "BBL: <strong>%s</strong><br/>
-     Inferred Lot Status: <strong>%s</strong><br/>",
-    shp$BBL, shp$Inferred_1
+     Inferred Lot Status: <strong>%s</strong><br/>
+     Owner: %s",
+    shp$BBL, shp$Inferred_1, shp$NB_Owner
   ) %>% lapply(htmltools::HTML)
 
 label_new <- sprintf(
     "%s %s",
     as.character(blocks_center$Borough), as.character(blocks_center$BLOCK)
   ) %>% lapply(htmltools::HTML)
+
 ```
 
 
@@ -210,17 +218,17 @@ leaflet(data=sd_map) %>%
                               fillOpacity = 6,
                               bringToFront = T),
                               label = label) %>%
-  addLayersControl(
-        baseGroups = "Inferred Lots",
-        position = "topleft",
-        overlayGroups = c("Buildings Locator"),
-        options = layersControlOptions(collapsed = F)
-      ) %>%
-      htmlwidgets::onRender("
-        function() {
-            $('.leaflet-control-layers-base').prepend('<label style=\"text-align:center\">Map Variable</label>');
-        }
-    ")  %>%
+  # addLayersControl(
+        # baseGroups = "Inferred Lots",
+      #   position = "topleft",
+      #   overlayGroups = c("Buildings Locator"),
+      #   options = layersControlOptions(collapsed = F)
+      # ) %>%
+    #   htmlwidgets::onRender("
+    #     function() {
+    #         $('.leaflet-control-layers-base').prepend('<label style=\"text-align:center\">Map Variable</label>');
+    #     }
+    # ")  %>%
       addMarkers(data=blocks_center,
                group = 'marker', label = label_new,
                    icon = makeIcon( 
@@ -241,7 +249,7 @@ leaflet(data=sd_map) %>%
 More Info {data-orientation=rows data-icon="fa-info-circle"}
 =====================================
 
-### More Information
+### Page for More Info
 
 #### How to use
 
