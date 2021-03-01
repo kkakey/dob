@@ -186,6 +186,8 @@ Column {data-width=600}
 ```{r}
 factpal <- colorFactor(palette="YlOrBr", shp$Inferred_1)
 
+shp$NB_Owner_mod <- gsub('(?=(?:.{30})+$)', "<br/>", shp$NB_Owner, perl = TRUE)
+
 label <- sprintf(
     "BBL: <strong>%s</strong><br/>
      Inferred Lot Status: <strong>%s</strong><br/>
@@ -203,7 +205,7 @@ label_new <- sprintf(
 
 
 ```{r}
-plot_map <- leaflet(data=sd_map) %>%
+leaflet(data=sd_map) %>%
   leaflet::addProviderTiles(providers$OpenStreetMap) %>%
   addCircleMarkers(data=sd_block, 
                    clusterOptions = markerClusterOptions(maxClusterRadius = 75),
@@ -243,17 +245,6 @@ plot_map <- leaflet(data=sd_map) %>%
              i.e: Manhattan 1722</p>",
            position = 'topleft'
   )
-
-browsable(
-  tagList(list(
-    tags$head(
-      tags$style(
-        ".leaflet-tooltip{ width: 150px; white-space: normal; }"
-      )
-    ),
-    plot_map
-  ))
-)
 ```
 
 
