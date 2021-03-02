@@ -192,7 +192,7 @@ label <- sprintf(
     "BBL: <strong>%s</strong><br/>
      Inferred Lot Status: <strong>%s</strong><br/>
      Owner: %s",
-    shp$BBL, shp$Inferred_1, shp$NB_Owner
+    shp$BBL, shp$Inferred_1, shp$NB_Owner_mod
   ) %>% lapply(htmltools::HTML)
 
 label_new <- sprintf(
