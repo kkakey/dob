@@ -14,11 +14,18 @@ import warnings
 from datetime import datetime, timedelta
 from urllib.request import urlopen
 import math
+import zipfile
 warnings.filterwarnings('ignore')
 
 ### Load/Retrieve all data
 
 #### Retrieve data from API
+today = datetime.today()
+s = today.strftime("%Y/%m/%d")
+date = datetime.strptime(s, "%Y/%m/%d")
+modified_date = date - timedelta(days=365*3)
+back_to_date = datetime.strftime(modified_date, "%Y-%m-%d")
+one_year_span = datetime.strftime(date - timedelta(days=365), "%Y-%m-%d")
 
 ## DOB Job Application Filings
 ## https://data.cityofnewyork.us/Housing-Development/DOB-Job-Application-Filings/ic3t-wcy2/data
@@ -46,12 +53,6 @@ df = df[df['year']==2021]
 df = df[df['doc__']=="01"]
 
 df.to_csv("raw-data/NB-2021.csv", index=False)
-
-today = datetime.today()
-s = today.strftime("%Y/%m/%d")
-date = datetime.strptime(s, "%Y/%m/%d")
-modified_date = date - timedelta(days=365*3)
-back_to_date = datetime.strftime(modified_date, "%Y-%m-%d")
 
 where_var = "good_through_date >" + ' "' + back_to_date + '"'
 
@@ -835,18 +836,13 @@ the_df = the_df.rename(columns={"bin__":"BIN"})
 the_df.loc[the_df.BBL_Description=="Job Filing", "Map Status"] = "NB on map"
 the_df.loc[the_df.BBL.isin(odd_NB_BBLs), "Map Status"] = "NB not on map"
 
-## save as "FilterYear_#ofDocsBlacklisted"
-
-the_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+ str(len(blacklist)-9)+".csv", index=False)
-
 # join output with Real Property Master's for information on document types
-final = pd.merge(the_df, rpm, left_on="doc_id", right_on="document_id", how="left")
-final = final.fillna("-")
-final = final.drop("document_id", axis=1)
-
-## final csv
-final.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-9)+"-doc_data.csv", index=False)
-print('saved'+" Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-7)+"!")
+# final = pd.merge(the_df, rpm, left_on="doc_id", right_on="document_id", how="left")
+# final = final.fillna("-")
+# final = final.drop("document_id", axis=1)
+# ## final csv
+# final.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-9)+"-doc_data.csv", index=False)
+# print('saved'+" Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-7)+"!")
 
 # list of BBLs not in the shapefile
 d = {'BBL': odd_NB_BBLs}
@@ -858,3 +854,46 @@ odd_NB_BBLs_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold
     ## removes lots not analyzed in run
 tax_shp = tax_shp[~tax_shp.BBL_description.isna()]
 tax_shp.to_file(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-9)+".shp")
+
+
+### Attach BINs to these lots
+
+# https://www1.nyc.gov/site/planning/data-maps/open-data.page
+URL = \
+    'https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/pad21a.zip'
+
+# open and save the zip file onto computer
+url = urlopen(URL)
+outputzip = open('./raw-data/pad_'+today.strftime("%Y%m%d")+'.zip', 'wb')
+outputzip.write(url.read())
+outputzip.close()
+
+path_read_zip_pad = './raw-data/pad_'+today.strftime("%Y%m%d")+'.zip'
+zf = zipfile.ZipFile(path_read_zip_pad)
+pad = pd.read_csv(zf.open('bobaadr.txt'))
+
+pad['boro'] = pad.boro.astype(int).astype(str)
+pad['block'] = pad.block.astype(int).astype(str)
+pad['lot'] = pad.lot.astype(int).astype(str)
+pad['BBL'] = pad['boro'].astype(str) + pad['block'].astype(str).str.zfill(5) + pad['lot'].astype(str).str.zfill(4)
+
+pad.bin = pad.bin.astype(str)
+pad['address'] = pad['sclgc'].astype(str) + ' ' + pad['stname'].astype(str) + ' ' + pad['zipcode'].astype(str)
+pad['address'] = [' '.join(s.split()) for s in pad['address']]
+
+the_df['bin_col'] = "0"
+
+bbl_to_bins = the_df.BBL.tolist()
+the_df['bin_col'] = "0"
+for bbl in bbl_to_bins:
+    if pad[pad['BBL']==str(bbl)].bin.shape[0] > 1:
+        bins = list(set(pad[pad['BBL']==str(bbl)].bin.tolist()))
+        bins = "; ".join(bins)
+        the_df.loc[the_df.BBL==bbl, 'bin_col'] = bins
+    elif pad[pad['BBL']==str(bbl)].bin.shape[0] == 1:
+        the_df.loc[the_df.BBL==bbl, 'bin_col'] = list(set(pad[pad['BBL']==str(bbl)].bin.tolist())) * the_df.loc[the_df.BBL==bbl, 'bin_col'].shape[0]
+    else:
+        the_df.loc[the_df.BBL==bbl, 'bin_col'] = "-"
+
+## save as "FilterYear_#ofDocsBlacklisted"
+the_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+ str(len(blacklist)-9)+".csv", index=False)

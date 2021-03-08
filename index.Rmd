@@ -25,7 +25,7 @@ shp <-st_transform(shp, crs=4269)
 shp <- shp %>%
   left_join(., nb_data %>% 
               mutate(BBL = as.character(BBL)) %>%
-              select(BBL, BIN, pre__filing_date), by="BBL")
+              select(BBL, bin_col,Address, pre__filing_date), by="BBL")
 # pre_filing dates for all buildings for filtering 
 date_BBLs <- shp[shp$pre__filing_date!="-" & !is.na(shp$pre__filing_date),] %>%
   data.frame() %>%
@@ -69,7 +69,7 @@ nb_data <- nb_data %>%
   
 nb_data <- nb_data[c("BBL", "Borough", "Block","Job_Filing", "BBL_Description",
                      "Inferred_lots","Address", "NB_Owner","Same_Owner","Joint_NBs", 
-                     "BIN", "pre__filing_date", "Map.Status")]
+                     "bin_col", "pre__filing_date", "Map.Status")]
 nb_data$pre__filing_date <- as.Date(nb_data$pre__filing_date)
 nb_data$Block <- as.double(nb_data$Block)
 
@@ -95,6 +95,10 @@ nb_data <- nb_data %>%
   arrange(group_code) %>%
   ungroup() %>% select(!c(boro_code, group_code))
 
+nb_data <- nb_data %>%
+  mutate(Joint_NBs = case_when(Joint_NBs=="NB" ~ "NB",
+                               Joint_NBs=="ADJACENT" ~ "Adjacent",
+                               Joint_NBs=="BLOCK" ~ "Block"))
 
 sd <- SharedData$new(nb_data, group = "map")
 sd_map <- SharedData$new(shp, group = "map")
@@ -114,6 +118,7 @@ Column {data-width=400}
 update_date<- Sys.Date()
 update_date<-update_date
 knitr::kable(paste0("Last updated: ", update_date), col.names = NULL)
+knitr::kable(paste0("Time frame: ", as.Date(update_date)-365, " to ", update_date), col.names = NULL)
 ```
 
 ### Overview
@@ -150,7 +155,8 @@ sd %>%
         list(
           visible = FALSE,
           targets = c(7:12)
-        )
+        ),
+        list(width = 50, targets = 11)
       ),
       buttons = list(
         I("colvis"),  # turn columns on and off
@@ -169,11 +175,11 @@ sd %>%
       "NB Owner" = "NB_Owner",
       "Adjacent Same Owner" = "Same_Owner",
       "Multi-Lot Filing" = "Joint_NBs",
-      "BIN" = "BIN",
+      "BIN" = "bin_col",
       "Pre-filing Date" = "pre__filing_date",
       "Map Status" = "Map.Status"
     )
-  )
+  ) 
 ```
 
 
@@ -186,20 +192,23 @@ Column {data-width=600}
 ```{r}
 factpal <- colorFactor(palette="YlOrBr", shp$Inferred_1)
 
-shp$NB_Owner_mod <- gsub('(?=(?:.{30})+$)', "<br/>", shp$NB_Owner, perl = TRUE)
+# shp$NB_Owner_mod <- gsub('(?=(?:.{30})+$)', "<br/>", shp$NB_Owner, perl = TRUE)
+
+shp <- shp %>%
+  mutate(pre__filing_date = ifelse(Inferred_1=="NB", pre__filing_date, "-"))
 
 label <- sprintf(
     "BBL: <strong>%s</strong><br/>
      Inferred Lot Status: <strong>%s</strong><br/>
-     Owner: %s",
-    shp$BBL, shp$Inferred_1, shp$NB_Owner_mod
+     Address: %s<br/>
+     Pre-filing Date: %s",
+    shp$BBL, shp$Inferred_1, shp$Address, shp$pre__filing_date
   ) %>% lapply(htmltools::HTML)
 
 label_new <- sprintf(
     "%s %s",
     as.character(blocks_center$Borough), as.character(blocks_center$BLOCK)
   ) %>% lapply(htmltools::HTML)
-
 ```
 
 
