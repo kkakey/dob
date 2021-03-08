@@ -49,7 +49,8 @@ df = df[df["job_type"]=="NB"]
 df.latest_action_date = pd.to_datetime(df.latest_action_date)
 df.pre__filing_date = pd.to_datetime(df.pre__filing_date)
 df['year'] = pd.DatetimeIndex(df['pre__filing_date']).year
-df = df[df['year']==2021]
+# one year time span of NBs
+df = df[df.pre__filing_date.between(pd.to_datetime(one_year_span), pd.to_datetime(today), inclusive = True)]
 df = df[df['doc__']=="01"]
 
 df.to_csv("raw-data/NB-2021.csv", index=False)
