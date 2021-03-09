@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 today = datetime.today()
 s = today.strftime("%Y/%m/%d")
 date = datetime.strptime(s, "%Y/%m/%d")
-modified_date = date - timedelta(days=365*3)
+modified_date = date - timedelta(days=365*3.5)
 back_to_date = datetime.strftime(modified_date, "%Y-%m-%d")
 one_year_span = datetime.strftime(date - timedelta(days=365), "%Y-%m-%d")
 
@@ -820,7 +820,7 @@ blacklist =  ["PREL", "REL", "RTXL", "SAGE", "TERA", "TL&R", "TLS", "SAT", "CERT
      "ASST", "DECL","EASE", "AGMT", "MTGE","AALR","AIRRIGHT","CDEC","CORRD",
      "CTOR","DEEDO","RPTT&RET", "PAT", "MCON"]
 
-date_threshold = str(int(s[:4])-2)+'-01-01 00:00:00'
+- date_threshold = str(int(s[:4])-3)+'-01-01 00:00:00'
 
 tax_shp = gpd.read_file(shapefile_saved_path + "NB_lots_blocks.shp")
 
@@ -856,6 +856,8 @@ odd_NB_BBLs_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold
     ## removes lots not analyzed in run
 tax_shp = tax_shp[~tax_shp.BBL_description.isna()]
 tax_shp = tax_shp[tax_shp.Inferred_lot_desc!="BLOCK"]
+# Remove 'None' areas
+tax_shp = tax_shp[~tax_shp.Inferred_1.isna()]
 tax_shp.to_file(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-9)+".shp")
 
 
@@ -881,13 +883,12 @@ pad['lot'] = pad.lot.astype(int).astype(str)
 pad['BBL'] = pad['boro'].astype(str) + pad['block'].astype(str).str.zfill(5) + pad['lot'].astype(str).str.zfill(4)
 
 pad.bin = pad.bin.astype(str)
-pad['address'] = pad['sclgc'].astype(str) + ' ' + pad['stname'].astype(str) + ' ' + pad['zipcode'].astype(str)
+pad['address'] = pad['lhnd'].astype(str) + ' ' + pad['stname'].astype(str) + ' ' + pad['zipcode'].astype(str)
 pad['address'] = [' '.join(s.split()) for s in pad['address']]
-
-the_df['bin_col'] = "0"
 
 bbl_to_bins = the_df.BBL.tolist()
 the_df['bin_col'] = "0"
+the_df['pad_address'] = "0"
 for bbl in bbl_to_bins:
     if pad[pad['BBL']==str(bbl)].bin.shape[0] > 1:
         bins = list(set(pad[pad['BBL']==str(bbl)].bin.tolist()))
@@ -897,6 +898,18 @@ for bbl in bbl_to_bins:
         the_df.loc[the_df.BBL==bbl, 'bin_col'] = list(set(pad[pad['BBL']==str(bbl)].bin.tolist())) * the_df.loc[the_df.BBL==bbl, 'bin_col'].shape[0]
     else:
         the_df.loc[the_df.BBL==bbl, 'bin_col'] = "-"
+
+    if pad[pad['BBL']==str(bbl)].address.shape[0] > 1:
+        if len(pad[pad.BBL==str(bbl)].stname.unique())==1:
+            the_df.loc[the_df.BBL==bbl, 'pad_address'] = [pad[pad.BBL==str(bbl)].address.tolist()[0]] * the_df.loc[the_df.BBL==bbl, 'pad_address'].shape[0]
+        else:
+            muli_address = pad[pad.BBL==str(bbl)].address.unique().tolist()
+            muli_addressstr = "; ".join(muli_address)
+            the_df.loc[the_df.BBL==bbl, 'pad_address'] = muli_addressstr
+    elif pad[pad['BBL']==str(bbl)].address.shape[0] == 1:
+        the_df.loc[the_df.BBL==bbl, 'pad_address'] = list(set(pad[pad['BBL']==str(bbl)].address.tolist())) * the_df.loc[the_df.BBL==bbl, 'pad_address'].shape[0]
+    else:
+        the_df.loc[the_df.BBL==bbl, 'pad_address'] = "-"
 
 ## save as "FilterYear_#ofDocsBlacklisted"
 the_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+ str(len(blacklist)-9)+".csv", index=False)

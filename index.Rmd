@@ -19,13 +19,13 @@ library(sf)
 library(leaflet.extras)
 library(htmltools)
 # library(rgdal)
-nb_data <- read.csv("./model_output/Filter02_14.csv")
-shp <- read_sf("./model_output/Filter02_14.shp")
+nb_data <- read.csv("./model_output/Filter03_14.csv")
+shp <- read_sf("./model_output/Filter03_14.shp")
 shp <-st_transform(shp, crs=4269)
 shp <- shp %>%
   left_join(., nb_data %>% 
               mutate(BBL = as.character(BBL)) %>%
-              select(BBL, bin_col,Address, pre__filing_date), by="BBL")
+              select(BBL, bin_col,pad_address, pre__filing_date), by="BBL")
 # pre_filing dates for all buildings for filtering 
 date_BBLs <- shp[shp$pre__filing_date!="-" & !is.na(shp$pre__filing_date),] %>%
   data.frame() %>%
@@ -68,7 +68,7 @@ nb_data <- nb_data %>%
   select(!boro_code)
   
 nb_data <- nb_data[c("BBL", "Borough", "Block","Job_Filing", "BBL_Description",
-                     "Inferred_lots","Address", "NB_Owner","Same_Owner","Joint_NBs", 
+                     "Inferred_lots","pad_address", "NB_Owner","Same_Owner","Joint_NBs", 
                      "bin_col", "pre__filing_date", "Map.Status")]
 nb_data$pre__filing_date <- as.Date(nb_data$pre__filing_date)
 nb_data$Block <- as.double(nb_data$Block)
@@ -171,7 +171,7 @@ sd %>%
       "Job Filing" = "Job_Filing",
       "BBL Description" = "BBL_Description",
       "Inferred Lots" = "Inferred_lots",
-      "Address" = "Address",
+      "Address" = "pad_address",
       "NB Owner" = "NB_Owner",
       "Adjacent Same Owner" = "Same_Owner",
       "Multi-Lot Filing" = "Joint_NBs",
@@ -202,7 +202,7 @@ label <- sprintf(
      Inferred Lot Status: <strong>%s</strong><br/>
      Address: %s<br/>
      Pre-filing Date: %s",
-    shp$BBL, shp$Inferred_1, shp$Address, shp$pre__filing_date
+    shp$BBL, shp$Inferred_1, shp$pad_address, shp$pre__filing_date
   ) %>% lapply(htmltools::HTML)
 
 label_new <- sprintf(
