@@ -833,6 +833,7 @@ the_df = pd.merge(the_df, df[df.BBL.isin(the_df.BBL.tolist())][["BBL", "bin__", 
 the_df['bin__'] = [int(i) if not math.isnan(i) else "-" for i in the_df['bin__']]
 the_df['pre__filing_date'] = the_df['pre__filing_date'].fillna("-")
 the_df = the_df.rename(columns={"bin__":"BIN"})
+the_df = the_df[the_df.Inferred_lots!="Block"]
 
 the_df.loc[the_df.BBL_Description=="Job Filing", "Map Status"] = "NB on map"
 the_df.loc[the_df.BBL.isin(odd_NB_BBLs), "Map Status"] = "NB not on map"
@@ -854,6 +855,7 @@ odd_NB_BBLs_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold
 ## save final shapefile
     ## removes lots not analyzed in run
 tax_shp = tax_shp[~tax_shp.BBL_description.isna()]
+tax_shp = tax_shp[tax_shp.Inferred_lot_desc!="BLOCK"]
 tax_shp.to_file(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-9)+".shp")
 
 
