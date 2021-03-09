@@ -857,7 +857,7 @@ odd_NB_BBLs_df.to_csv(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold
 tax_shp = tax_shp[~tax_shp.BBL_description.isna()]
 tax_shp = tax_shp[tax_shp.Inferred_lot_desc!="BLOCK"]
 # Remove 'None' areas
-tax_shp = tax_shp[~tax_shp.Inferred_1.isna()]
+tax_shp = tax_shp[~tax_shp.Inferred_lot_desc.isna()]
 tax_shp.to_file(model_output+"Filter"+str(int(s[2:4]) - int(date_threshold[2:4])).zfill(2)+"_"+str(len(blacklist)-9)+".shp")
 
 
