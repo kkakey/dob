@@ -820,7 +820,7 @@ blacklist =  ["PREL", "REL", "RTXL", "SAGE", "TERA", "TL&R", "TLS", "SAT", "CERT
      "ASST", "DECL","EASE", "AGMT", "MTGE","AALR","AIRRIGHT","CDEC","CORRD",
      "CTOR","DEEDO","RPTT&RET", "PAT", "MCON"]
 
-- date_threshold = str(int(s[:4])-3)+'-01-01 00:00:00'
+date_threshold = str(int(s[:4])-3)+'-01-01 00:00:00'
 
 tax_shp = gpd.read_file(shapefile_saved_path + "NB_lots_blocks.shp")
 
